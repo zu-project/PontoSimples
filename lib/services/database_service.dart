@@ -51,4 +51,23 @@ class DatabaseService {
       return Ponto.fromMap(maps[i]);
     });
   }
+
+  // Novo método para atualizar um ponto
+  Future<void> atualizarPonto(Ponto ponto) async {
+    final db = await database;
+    await db.update(
+      'pontos',
+      ponto.toMap(),
+      where: 'id = ?',
+      whereArgs: [ponto.id],
+    );
+  }
+  Future<void> deletarPonto(int id) async {
+    final db = await database;
+    await db.delete(
+      'pontos',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

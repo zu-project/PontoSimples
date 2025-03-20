@@ -8,7 +8,7 @@ import 'package:pontocerto/screens/tela_relatorio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart'; // Adicionar esta importação
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class TelaInicial extends StatefulWidget {
   @override
@@ -40,7 +40,7 @@ class _TelaInicialState extends State<TelaInicial> {
   void _initAd() {
     _bannerAd = BannerAd(
       adUnitId: 'ca-app-pub-5008862023821727/3365906652', // Substitua pelo seu Ad Unit ID real
-      size: AdSize.banner, // Tamanho padrão do banner (320x50)
+      size: AdSize.banner,
       request: AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (Ad ad) {
@@ -51,10 +51,21 @@ class _TelaInicialState extends State<TelaInicial> {
         onAdFailedToLoad: (Ad ad, LoadAdError error) {
           print('Falha ao carregar o anúncio: $error');
           ad.dispose();
+          setState(() {
+            _isAdLoaded = false;
+          });
         },
       ),
     );
     _bannerAd!.load(); // Carregar o anúncio
+  }
+
+  // Método para recarregar o banner
+  void _reloadAd() {
+    if (_bannerAd != null) {
+      _bannerAd!.dispose(); // Descartar o banner atual
+    }
+    _initAd(); // Recriar e recarregar o banner
   }
 
   Future<void> _carregarNomeColaborador() async {
@@ -111,6 +122,7 @@ class _TelaInicialState extends State<TelaInicial> {
     setState(() {
       pontosDoDia = pontos;
     });
+    _reloadAd(); // Recarregar o banner ao atualizar a tela
   }
 
   Future<void> _registrarPonto() async {
@@ -243,7 +255,7 @@ class _TelaInicialState extends State<TelaInicial> {
                   children: <Widget>[
                     BotaoRegistrar(onPressed: _registrarPonto),
                     SizedBox(height: 20),
-                    Text('Horários de Hoje:'),
+                    Text('Horários de Hoje: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}'),
                     Expanded(
                       child: ListView.builder(
                         itemCount: pontosDoDia.length,

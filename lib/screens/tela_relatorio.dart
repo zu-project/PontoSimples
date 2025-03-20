@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:excel/excel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TelaRelatorio extends StatefulWidget {
   final String nomeColaborador;
@@ -27,10 +28,89 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
   Map<DateTime, List<Ponto>> _pontosAgrupados = {};
   final DatabaseService _databaseService = DatabaseService();
 
+  String _cargaHoraria = '40h'; // Padrão: 40h semanais
+  static const String _cargaKey = 'cargaHoraria';
+
   @override
   void initState() {
     super.initState();
     _carregarPontos();
+    _carregarCargaHoraria();
+  }
+
+  Future<void> _carregarCargaHoraria() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _cargaHoraria = prefs.getString(_cargaKey) ?? '40h';
+    });
+  }
+
+  Future<void> _salvarCargaHoraria(String carga) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cargaKey, carga);
+    setState(() {
+      _cargaHoraria = carga;
+    });
+    await _carregarPontos();
+  }
+
+  Future<void> _exibirDialogoCargaHoraria() async {
+    List<String> opcoesCargaHoraria = [
+      '40h semanais (8h/dia (40h semanal))',
+      '44h semanais (8h/dia + 4h sábado ou domingo(44h))',
+      '12x36 (12h trabalho, 36h folga)',
+      '6x1 (6h/dia)',
+    ];
+    String? valorSelecionado = opcoesCargaHoraria.firstWhere(
+          (opcao) => opcao.contains(_cargaHoraria),
+      orElse: () => opcoesCargaHoraria[0],
+    );
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text('Escolher Carga Horária'),
+              content: DropdownButton<String>(
+                value: valorSelecionado,
+                isExpanded: true,
+                items: opcoesCargaHoraria.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? novoValor) {
+                  if (novoValor != null) {
+                    setStateDialog(() {
+                      valorSelecionado = novoValor;
+                    });
+                  }
+                },
+              ),
+              actions: [
+                TextButton(
+                  child: Text('Cancelar'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Salvar'),
+                  onPressed: () {
+                    if (valorSelecionado != null) {
+                      String carga = valorSelecionado!.split(' ')[0]; // Extrai '40h', '44h', etc.
+                      _salvarCargaHoraria(carga);
+                    }
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _carregarPontos() async {
@@ -67,13 +147,141 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
       }
     }
 
-    Duration jornadaNormal = Duration(hours: 8);
+    Duration jornadaNormal;
+    DateTime data = pontos.isNotEmpty ? pontos[0].dataHora : DateTime.now();
+    bool isWeekend = data.weekday == DateTime.saturday || data.weekday == DateTime.sunday;
+
+    switch (_cargaHoraria) {
+      case '40h':
+        jornadaNormal = Duration(hours: 8);
+        break;
+      case '44h':
+        jornadaNormal = isWeekend ? Duration(hours: 4) : Duration(hours: 8);
+        break;
+      case '12x36':
+        jornadaNormal = Duration(hours: 12);
+        break;
+      case '6x1':
+        jornadaNormal = Duration(hours: 6);
+        break;
+      default:
+        jornadaNormal = Duration(hours: 8);
+    }
+
     Duration horasExtras = totalHorasTrabalhadas - jornadaNormal;
 
     return {
       'horasTrabalhadas': totalHorasTrabalhadas,
       'horasExtras': horasExtras,
     };
+  }
+
+  Future<void> _editarPonto(Ponto ponto) async {
+    DateTime dataHoraAtual = ponto.dataHora;
+    TextEditingController _cidadeController = TextEditingController(text: ponto.cidade);
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        DateTime novaDataHora = dataHoraAtual;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text('Editar Ponto'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Data: ${DateFormat('dd/MM/yyyy').format(novaDataHora)}'),
+                      TextButton(
+                        onPressed: () async {
+                          final DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: novaDataHora,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2025, 12, 31),
+                          );
+                          if (picked != null) {
+                            setStateDialog(() {
+                              novaDataHora = DateTime(
+                                picked.year,
+                                picked.month,
+                                picked.day,
+                                novaDataHora.hour,
+                                novaDataHora.minute,
+                              );
+                            });
+                          }
+                        },
+                        child: Text('Alterar'),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Hora: ${DateFormat('HH:mm').format(novaDataHora)}'),
+                      TextButton(
+                        onPressed: () async {
+                          final TimeOfDay? picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.fromDateTime(novaDataHora),
+                          );
+                          if (picked != null) {
+                            setStateDialog(() {
+                              novaDataHora = DateTime(
+                                novaDataHora.year,
+                                novaDataHora.month,
+                                novaDataHora.day,
+                                picked.hour,
+                                picked.minute,
+                              );
+                            });
+                          }
+                        },
+                        child: Text('Alterar'),
+                      ),
+                    ],
+                  ),
+                  TextField(
+                    controller: _cidadeController,
+                    decoration: InputDecoration(labelText: 'Cidade'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: Text('Deletar'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  onPressed: () async {
+                    await _databaseService.deletarPonto(ponto.id!);
+                    await _carregarPontos();
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: Text('Cancelar'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Salvar'),
+                  onPressed: () async {
+                    ponto.dataHora = novaDataHora;
+                    ponto.cidade = _cidadeController.text;
+                    await _databaseService.atualizarPonto(ponto);
+                    await _carregarPontos();
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _gerarPdf() async {
@@ -128,6 +336,7 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
             ),
             pw.SizedBox(height: 10),
             pw.Text('Colaborador: ${widget.nomeColaborador}', style: pw.TextStyle(fontSize: 14)),
+            pw.Text('Carga Horária: $_cargaHoraria', style: pw.TextStyle(fontSize: 12)),
             pw.Text(
               'Período de busca: ${DateFormat('dd/MM/yyyy').format(_dataInicio)} - ${DateFormat('dd/MM/yyyy').format(_dataFim)}',
               style: pw.TextStyle(fontSize: 12),
@@ -142,14 +351,6 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
             pw.Text('TOTAL DE HORAS EXTRAS: $totalHorasExtrasFormatadas', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           ],
         );
-      },
-    ));
-
-    pdf.addPage(pw.MultiPage(
-      build: (pw.Context context) {
-        return [
-          pw.Footer(title: pw.Text("Elaborado por F.Zu Project.")),
-        ];
       },
     ));
 
@@ -185,15 +386,16 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
 
     sheetObject.cell(CellIndex.indexByString("A1")).value = TextCellValue("RELATÓRIO DE PONTO");
     sheetObject.cell(CellIndex.indexByString("A2")).value = TextCellValue("Colaborador: ${widget.nomeColaborador}");
-    sheetObject.cell(CellIndex.indexByString("A3")).value = TextCellValue(
+    sheetObject.cell(CellIndex.indexByString("A3")).value = TextCellValue("Carga Horária: $_cargaHoraria");
+    sheetObject.cell(CellIndex.indexByString("A4")).value = TextCellValue(
       "Período de busca: ${DateFormat('dd/MM/yyyy').format(_dataInicio)} - ${DateFormat('dd/MM/yyyy').format(_dataFim)}",
     );
 
     for (int i = 0; i < cabecalho.length; i++) {
-      sheetObject.cell(CellIndex.indexByString("${String.fromCharCode(65 + i)}5")).value = TextCellValue(cabecalho[i]);
+      sheetObject.cell(CellIndex.indexByString("${String.fromCharCode(65 + i)}6")).value = TextCellValue(cabecalho[i]);
     }
 
-    int linhaAtual = 6;
+    int linhaAtual = 7;
     Duration totalHorasPeriodo = Duration();
     Duration totalHorasExtrasPeriodo = Duration();
 
@@ -282,6 +484,12 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Relatório de Ponto'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: _exibirDialogoCargaHoraria,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -340,11 +548,12 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
                         itemCount: pontosDoDia.length,
-                        itemBuilder: (context, index) {
-                          final ponto = pontosDoDia[index];
+                        itemBuilder: (context, pontoIndex) {
+                          final ponto = pontosDoDia[pontoIndex];
                           return ListTile(
                             title: Text(DateFormat('HH:mm').format(ponto.dataHora)),
                             subtitle: Text('${ponto.cidade}'),
+                            onTap: () => _editarPonto(ponto),
                           );
                         },
                       ),
