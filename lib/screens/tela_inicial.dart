@@ -7,7 +7,8 @@ import 'package:pontocerto/widgets/botao_registrar.dart';
 import 'package:pontocerto/screens/tela_relatorio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Adicionar esta importação
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Adicionar esta importação
 
 class TelaInicial extends StatefulWidget {
   @override
@@ -20,17 +21,42 @@ class _TelaInicialState extends State<TelaInicial> {
   List<Ponto> pontosDoDia = [];
   String? _cidadeExibida;
   final TextEditingController _cidadeController = TextEditingController();
-  String _nomeColaborador = "NOME DO COLABORADOR"; // Variável para o nome do colaborador
-  final TextEditingController _nomeController = TextEditingController(); // Controlador para edição do nome
+  String _nomeColaborador = "NOME DO COLABORADOR";
+  final TextEditingController _nomeController = TextEditingController();
+
+  // Variáveis para o banner do AdMob
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _carregarPontosDoDia();
-    _carregarNomeColaborador(); // Carregar o nome salvo ao iniciar
+    _carregarNomeColaborador();
+    _initAd(); // Inicializar o anúncio
   }
 
-  // Carregar o nome do colaborador salvo
+  // Inicializar o banner do AdMob
+  void _initAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-5008862023821727/3365906652', // Substitua pelo seu Ad Unit ID real
+      size: AdSize.banner, // Tamanho padrão do banner (320x50)
+      request: AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (Ad ad) {
+          setState(() {
+            _isAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (Ad ad, LoadAdError error) {
+          print('Falha ao carregar o anúncio: $error');
+          ad.dispose();
+        },
+      ),
+    );
+    _bannerAd!.load(); // Carregar o anúncio
+  }
+
   Future<void> _carregarNomeColaborador() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -39,7 +65,6 @@ class _TelaInicialState extends State<TelaInicial> {
     });
   }
 
-  // Salvar o nome do colaborador
   Future<void> _salvarNomeColaborador(String nome) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('nomeColaborador', nome);
@@ -48,7 +73,6 @@ class _TelaInicialState extends State<TelaInicial> {
     });
   }
 
-  // Exibir diálogo para editar o nome
   Future<void> _exibirDialogoNome() async {
     return showDialog<void>(
       context: context,
@@ -116,7 +140,6 @@ class _TelaInicialState extends State<TelaInicial> {
           _cidadeExibida = cidade;
         }
         _cidadeController.text = _cidadeExibida ?? "";
-
         _exibirDialogoConfirmacao(position.latitude, position.longitude);
       } else {
         _exibirMensagem('Não foi possível obter a localização.');
@@ -175,14 +198,24 @@ class _TelaInicialState extends State<TelaInicial> {
   }
 
   @override
+  void dispose() {
+    _bannerAd?.dispose(); // Liberar o anúncio ao descartar a tela
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
-          onTap: _exibirDialogoNome, // Abrir diálogo ao clicar no texto
-          child: Text(
-            'Horário de Ponto - $_nomeColaborador',
-            style: TextStyle(fontSize: 20),
+          onTap: _exibirDialogoNome,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('HORÁRIO DE PONTO', style: TextStyle(fontSize: 16)),
+              Text(_nomeColaborador, style: TextStyle(fontSize: 20)),
+            ],
           ),
         ),
         actions: [
@@ -192,7 +225,7 @@ class _TelaInicialState extends State<TelaInicial> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TelaRelatorio(nomeColaborador: _nomeColaborador), // Passar o nome para TelaRelatorio
+                  builder: (context) => TelaRelatorio(nomeColaborador: _nomeColaborador),
                 ),
               );
             },
@@ -201,27 +234,41 @@ class _TelaInicialState extends State<TelaInicial> {
       ),
       body: RefreshIndicator(
         onRefresh: _carregarPontosDoDia,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              BotaoRegistrar(onPressed: _registrarPonto),
-              SizedBox(height: 20),
-              Text('Horários de Hoje:'),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: pontosDoDia.length,
-                  itemBuilder: (context, index) {
-                    final ponto = pontosDoDia[index];
-                    return ListTile(
-                      title: Text(DateFormat('HH:mm:ss').format(ponto.dataHora)),
-                      subtitle: Text('${ponto.cidade} - ${ponto.latitude}, ${ponto.longitude}'),
-                    );
-                  },
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    BotaoRegistrar(onPressed: _registrarPonto),
+                    SizedBox(height: 20),
+                    Text('Horários de Hoje:'),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: pontosDoDia.length,
+                        itemBuilder: (context, index) {
+                          final ponto = pontosDoDia[index];
+                          return ListTile(
+                            title: Text(DateFormat('HH:mm:ss').format(ponto.dataHora)),
+                            subtitle: Text('${ponto.cidade} - ${ponto.latitude}, ${ponto.longitude}'),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            // Adicionar o banner na parte inferior
+            if (_isAdLoaded && _bannerAd != null)
+              Container(
+                alignment: Alignment.center,
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: _bannerAd!),
+              ),
+          ],
         ),
       ),
     );
