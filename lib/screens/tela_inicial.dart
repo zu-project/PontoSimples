@@ -7,6 +7,7 @@ import 'package:pontocerto/widgets/botao_registrar.dart';
 import 'package:pontocerto/screens/tela_relatorio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Adicionar esta importação
 
 class TelaInicial extends StatefulWidget {
   @override
@@ -17,13 +18,67 @@ class _TelaInicialState extends State<TelaInicial> {
   final GeolocatorService _geolocatorService = GeolocatorService();
   final DatabaseService _databaseService = DatabaseService();
   List<Ponto> pontosDoDia = [];
-  String? _cidadeExibida; // Variável para armazenar a cidade a ser exibida
-  final TextEditingController _cidadeController = TextEditingController(); // Controlador para o campo de texto
+  String? _cidadeExibida;
+  final TextEditingController _cidadeController = TextEditingController();
+  String _nomeColaborador = "NOME DO COLABORADOR"; // Variável para o nome do colaborador
+  final TextEditingController _nomeController = TextEditingController(); // Controlador para edição do nome
 
   @override
   void initState() {
     super.initState();
     _carregarPontosDoDia();
+    _carregarNomeColaborador(); // Carregar o nome salvo ao iniciar
+  }
+
+  // Carregar o nome do colaborador salvo
+  Future<void> _carregarNomeColaborador() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _nomeColaborador = prefs.getString('nomeColaborador') ?? "NOME DO COLABORADOR";
+      _nomeController.text = _nomeColaborador;
+    });
+  }
+
+  // Salvar o nome do colaborador
+  Future<void> _salvarNomeColaborador(String nome) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('nomeColaborador', nome);
+    setState(() {
+      _nomeColaborador = nome;
+    });
+  }
+
+  // Exibir diálogo para editar o nome
+  Future<void> _exibirDialogoNome() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Editar Nome do Colaborador'),
+          content: TextField(
+            controller: _nomeController,
+            decoration: InputDecoration(labelText: 'Digite o nome'),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Salvar'),
+              onPressed: () {
+                if (_nomeController.text.isNotEmpty) {
+                  _salvarNomeColaborador(_nomeController.text);
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _carregarPontosDoDia() async {
@@ -56,21 +111,18 @@ class _TelaInicialState extends State<TelaInicial> {
             position.latitude, position.longitude);
 
         if (cidade == null || cidade.isEmpty) {
-          _cidadeExibida = "Bairro Desconhecido, Estado Desconhecido"; // Mensagem padrão
+          _cidadeExibida = "Bairro Desconhecido, Estado Desconhecido";
         } else {
-          _cidadeExibida = cidade; // Usar o valor obtido da geolocalização
+          _cidadeExibida = cidade;
         }
-        _cidadeController.text = _cidadeExibida ?? ""; // Inicializar o campo de texto com o valor obtido
+        _cidadeController.text = _cidadeExibida ?? "";
 
-        // Exibir um diálogo para o usuário confirmar ou editar a cidade
         _exibirDialogoConfirmacao(position.latitude, position.longitude);
-
       } else {
         _exibirMensagem('Não foi possível obter a localização.');
       }
     }
   }
-
 
   Future<void> _exibirDialogoConfirmacao(double latitude, double longitude) async {
     return showDialog<void>(
@@ -99,7 +151,6 @@ class _TelaInicialState extends State<TelaInicial> {
             TextButton(
               child: Text('Confirmar'),
               onPressed: () async {
-                // Salvar o ponto com a cidade digitada pelo usuário (se houver)
                 final ponto = Ponto(
                   dataHora: DateTime.now(),
                   latitude: latitude,
@@ -117,7 +168,6 @@ class _TelaInicialState extends State<TelaInicial> {
     );
   }
 
-
   void _exibirMensagem(String mensagem) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensagem)),
@@ -128,9 +178,12 @@ class _TelaInicialState extends State<TelaInicial> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Horário de Ponto - Flavio Zuicker',
-          style: TextStyle(fontSize: 20), // Ajuste o tamanho da fonte aqui
+        title: GestureDetector(
+          onTap: _exibirDialogoNome, // Abrir diálogo ao clicar no texto
+          child: Text(
+            'Horário de Ponto - $_nomeColaborador',
+            style: TextStyle(fontSize: 20),
+          ),
         ),
         actions: [
           IconButton(
@@ -138,13 +191,15 @@ class _TelaInicialState extends State<TelaInicial> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => TelaRelatorio()),
+                MaterialPageRoute(
+                  builder: (context) => TelaRelatorio(nomeColaborador: _nomeColaborador), // Passar o nome para TelaRelatorio
+                ),
               );
             },
           ),
         ],
       ),
-      body: RefreshIndicator(  // ADICIONADO AQUI
+      body: RefreshIndicator(
         onRefresh: _carregarPontosDoDia,
         child: Center(
           child: Column(

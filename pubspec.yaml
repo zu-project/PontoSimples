@@ -33,14 +33,15 @@ dependencies:
 
   sqflite: ^2.3.0 # Banco de dados SQLite
   path_provider: ^2.1.0 # Acesso ao sistema de arquivos do dispositivo
-  geolocator: ^9.0.0 # Geolocalização
-  geocoding: ^2.2.0  # ou a versão mais recente disponível
-  intl: ^0.18.1 # Formatação de data e hora
+  geolocator: ^13.0.3 # Geolocalização
+  geocoding: ^3.0.0  # ou a versão mais recente disponível
+  intl: ^0.20.2 # Formatação de data e hora
   permission_handler: ^11.1.0 # Solicitar permissões
   pdf: ^3.10.7
   printing: ^5.14.0
-  share_plus: ^7.2.1 # ou a versão mais recente
-  excel: ^2.1.0 # Ou a versão mais recente
+  share_plus: ^10.1.4 # ou a versão mais recente
+  excel: ^4.0.6 # Ou a versão mais recente
+  shared_preferences: ^2.2.0
 
 
   # The following adds the Cupertino Icons font to your application.
