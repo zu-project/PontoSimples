@@ -56,8 +56,8 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
 
   Future<void> _exibirDialogoCargaHoraria() async {
     List<String> opcoesCargaHoraria = [
-      '40h semanais (8h/dia (40h semanal))',
-      '44h semanais (8h/dia + 4h sábado ou domingo(44h))',
+      '40h semanais (8h/dia)',
+      '44h semanais (8h/dia + 4h sábado ou domingo)',
       '12x36 (12h trabalho, 36h folga)',
       '6x1 (6h/dia)',
     ];

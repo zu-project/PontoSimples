@@ -141,10 +141,34 @@ class _TelaInicialState extends State<TelaInicial> {
     }
 
     if (status.isGranted) {
+      // Exibir o loading enquanto obtém a localização
+      showDialog(
+        context: context,
+        barrierDismissible: false, // Impede que o usuário feche o diálogo clicando fora
+        builder: (BuildContext context) {
+          return Dialog(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Text("Obtendo localização..."),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
       final position = await _geolocatorService.getCurrentLocation();
       if (position != null) {
         String? cidade = await _geolocatorService.getCityFromCoordinates(
             position.latitude, position.longitude);
+
+        // Fechar o diálogo de loading
+        Navigator.of(context).pop();
 
         if (cidade == null || cidade.isEmpty) {
           _cidadeExibida = "Bairro Desconhecido, Estado Desconhecido";
@@ -154,6 +178,8 @@ class _TelaInicialState extends State<TelaInicial> {
         _cidadeController.text = _cidadeExibida ?? "";
         _exibirDialogoConfirmacao(position.latitude, position.longitude);
       } else {
+        // Fechar o diálogo de loading em caso de erro
+        Navigator.of(context).pop();
         _exibirMensagem('Não foi possível obter a localização.');
       }
     }
