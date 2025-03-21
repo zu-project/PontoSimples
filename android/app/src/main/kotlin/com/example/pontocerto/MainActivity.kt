@@ -1,4 +1,4 @@
-package com.example.pontocerto
+package com.zuproject.pontofacil
 
 import io.flutter.embedding.android.FlutterActivity
 

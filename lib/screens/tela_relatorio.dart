@@ -551,8 +551,8 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
                         itemBuilder: (context, pontoIndex) {
                           final ponto = pontosDoDia[pontoIndex];
                           return ListTile(
-                            title: Text(DateFormat('HH:mm').format(ponto.dataHora)),
-                            subtitle: Text('${ponto.cidade}'),
+                            title: Text(DateFormat('HH:mm:ss').format(ponto.dataHora)), // Adicionando segundos para igualar a TelaInicial
+                            subtitle: Text('${ponto.cidade} - ${ponto.latitude}, ${ponto.longitude}'), // Localização completa
                             onTap: () => _editarPonto(ponto),
                           );
                         },

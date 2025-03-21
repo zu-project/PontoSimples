@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
-        android:label="pontocerto"
+        android:label="Ponto Fácil!"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Mover o APPLICATION_ID para o nível da application -->

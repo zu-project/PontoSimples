@@ -1,12 +1,11 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.pontocerto"
+    namespace = "com.zuproject.pontofacil"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,27 +18,42 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    // Configuração de assinatura
+    signingConfigs {
+        create("release") {
+            storeFile = file("keystore.jks") // Caminho para o arquivo de chave
+            storePassword = "asdasd123"         // Senha do keystore
+            keyAlias = "minha-chave"              // Alias da chave
+            keyPassword = "asdasd123"     // Senha da chave
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pontocerto"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.zuproject.pontofacil" // Deve ser único na Play Store
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 1                      // Incrementar a cada nova versão
+        versionName = "1.0.0"                // Versão visível ao usuário
         ndkVersion = "27.0.12077973"
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release") // Usa a configuração de assinatura
+            isMinifyEnabled = true                       // Ativa minificação para reduzir o tamanho
+            isShrinkResources = true                    // Remove recursos não utilizados
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug") // Mantém debug para testes locais
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Dependências adicionais podem ser adicionadas aqui, se necessário
 }

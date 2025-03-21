@@ -40,7 +40,7 @@ class _TelaInicialState extends State<TelaInicial> {
   void _initAd() {
     _bannerAd = BannerAd(
       adUnitId: 'ca-app-pub-5008862023821727/3365906652', // Substitua pelo seu Ad Unit ID real
-      size: AdSize.banner,
+      size: AdSize.largeBanner,
       request: AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (Ad ad) {
@@ -251,8 +251,8 @@ class _TelaInicialState extends State<TelaInicial> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('HORÁRIO DE PONTO', style: TextStyle(fontSize: 16)),
-              Text(_nomeColaborador, style: TextStyle(fontSize: 20)),
+              Text('APP PONTO FÁCIL!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(_nomeColaborador.toUpperCase(), style: TextStyle(fontSize: 16, color: Colors.deepPurpleAccent)),
             ],
           ),
         ),
