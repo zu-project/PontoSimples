@@ -32,8 +32,8 @@ android {
         applicationId = "com.zuproject.pontofacil" // Deve ser único na Play Store
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 1                      // Incrementar a cada nova versão
-        versionName = "1.0.0"                // Versão visível ao usuário
+        versionCode = flutter.versionCode  // Usa o versionCode do pubspec.yaml
+        versionName = flutter.versionName        // Versão visível ao usuário
         ndkVersion = "27.0.12077973"
     }
 
@@ -43,6 +43,9 @@ android {
             isMinifyEnabled = true                       // Ativa minificação para reduzir o tamanho
             isShrinkResources = true                    // Remove recursos não utilizados
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            ndk {
+                debugSymbolLevel = "FULL" // Gera símbolos completos para depuração nativa
+            }
         }
         debug {
             signingConfig = signingConfigs.getByName("debug") // Mantém debug para testes locais
