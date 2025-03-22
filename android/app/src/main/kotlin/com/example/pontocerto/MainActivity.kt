@@ -1,4 +1,4 @@
-package com.zuproject.pontofacil
+package com.zuproject.checkponto
 
 import io.flutter.embedding.android.FlutterActivity
 

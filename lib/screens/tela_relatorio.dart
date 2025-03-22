@@ -115,14 +115,25 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
 
   Future<void> _carregarPontos() async {
     Map<DateTime, List<Ponto>> pontosAgrupados = {};
-    DateTime dataAtual = _dataInicio;
+    List<Ponto> todosPontos = await _databaseService.listarPontosPorPeriodo(_dataInicio, _dataFim);
 
-    while (dataAtual.isBefore(_dataFim.add(Duration(days: 1)))) {
-      List<Ponto> pontosDoDia = await _databaseService.listarPontosPorData(dataAtual);
-      if (pontosDoDia.isNotEmpty) {
-        pontosAgrupados[DateTime(dataAtual.year, dataAtual.month, dataAtual.day)] = pontosDoDia;
+    // Agrupar por turnos para 12x36
+    if (_cargaHoraria == '12x36') {
+      for (int i = 0; i < todosPontos.length; i++) {
+        Ponto ponto = todosPontos[i];
+        DateTime inicioTurno = _getInicioTurno(ponto.dataHora);
+        pontosAgrupados.putIfAbsent(inicioTurno, () => []).add(ponto);
       }
-      dataAtual = dataAtual.add(Duration(days: 1));
+    } else {
+      // Agrupamento por dia para outras cargas horárias
+      DateTime dataAtual = _dataInicio;
+      while (dataAtual.isBefore(_dataFim.add(Duration(days: 1)))) {
+        List<Ponto> pontosDoDia = await _databaseService.listarPontosPorData(dataAtual);
+        if (pontosDoDia.isNotEmpty) {
+          pontosAgrupados[DateTime(dataAtual.year, dataAtual.month, dataAtual.day)] = pontosDoDia;
+        }
+        dataAtual = dataAtual.add(Duration(days: 1));
+      }
     }
 
     setState(() {
@@ -130,25 +141,58 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
     });
   }
 
-  Map<String, Duration> calcularHorasTrabalhadasNoDia(List<Ponto> pontos) {
-    Duration totalHorasTrabalhadas = Duration();
-    if (pontos.length % 2 == 0) {
-      for (int i = 0; i < pontos.length; i += 2) {
-        DateTime entrada = pontos[i].dataHora;
-        DateTime saida = pontos[i + 1].dataHora;
-        totalHorasTrabalhadas += saida.difference(entrada);
-      }
+// Método auxiliar para determinar o início do turno 12x36
+  DateTime _getInicioTurno(DateTime ponto) {
+    // Assume que o turno começa às 18:00 e termina às 6:00 do dia seguinte
+    if (ponto.hour >= 18) {
+      return DateTime(ponto.year, ponto.month, ponto.day, 18);
     } else {
-      print('Aviso: Número ímpar de pontos em um dia. Ignorando o último ponto.');
-      for (int i = 0; i < pontos.length - 1; i += 2) {
-        DateTime entrada = pontos[i].dataHora;
-        DateTime saida = pontos[i + 1].dataHora;
-        totalHorasTrabalhadas += saida.difference(entrada);
+      return DateTime(ponto.year, ponto.month, ponto.day - 1, 18);
+    }
+  }
+
+  Map<String, Duration> calcularHorasTrabalhadasNoDia(List<Ponto> pontos) {
+    if (pontos.isEmpty) {
+      return {'horasTrabalhadas': Duration.zero, 'horasExtras': Duration.zero};
+    }
+
+    Duration totalHorasTrabalhadas = Duration();
+    Duration intervalo = Duration();
+
+    if (_cargaHoraria == '12x36' && pontos.length >= 2) {
+      DateTime entrada = pontos[0].dataHora; // 18:00 do dia 22
+      DateTime saida = pontos[pontos.length - 1].dataHora; // 6:00 do dia 23
+
+      // Calcula o intervalo (ex.: 1:00 às 2:00)
+      if (pontos.length >= 4) {
+        for (int i = 1; i < pontos.length - 1; i += 2) {
+          DateTime inicioIntervalo = pontos[i].dataHora;
+          DateTime fimIntervalo = pontos[i + 1].dataHora;
+          intervalo += fimIntervalo.difference(inicioIntervalo);
+        }
+      }
+
+      totalHorasTrabalhadas = saida.difference(entrada) - intervalo;
+    } else {
+      // Lógica para outras cargas horárias
+      if (pontos.length % 2 == 0) {
+        for (int i = 0; i < pontos.length; i += 2) {
+          DateTime entrada = pontos[i].dataHora;
+          DateTime saida = pontos[i + 1].dataHora;
+          totalHorasTrabalhadas += saida.difference(entrada);
+        }
+      } else {
+        print('Aviso: Número ímpar de pontos. Ignorando o último.');
+        for (int i = 0; i < pontos.length - 1; i += 2) {
+          DateTime entrada = pontos[i].dataHora;
+          DateTime saida = pontos[i + 1].dataHora;
+          totalHorasTrabalhadas += saida.difference(entrada);
+        }
       }
     }
 
     Duration jornadaNormal;
-    DateTime data = pontos.isNotEmpty ? pontos[0].dataHora : DateTime.now();
+    DateTime data = pontos[0].dataHora;
     bool isWeekend = data.weekday == DateTime.saturday || data.weekday == DateTime.sunday;
 
     switch (_cargaHoraria) {
@@ -169,6 +213,14 @@ class _TelaRelatorioState extends State<TelaRelatorio> {
     }
 
     Duration horasExtras = totalHorasTrabalhadas - jornadaNormal;
+
+    // Ajuste para 12x36: zerar horas extras negativas se intervalo <= 1h
+    if (_cargaHoraria == '12x36') {
+      final umaHora = Duration(hours: 1);
+      if (intervalo <= umaHora && horasExtras.isNegative) {
+        horasExtras = Duration.zero; // Zera se intervalo for até 1h
+      }
+    }
 
     return {
       'horasTrabalhadas': totalHorasTrabalhadas,

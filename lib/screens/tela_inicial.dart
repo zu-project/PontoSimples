@@ -251,7 +251,7 @@ class _TelaInicialState extends State<TelaInicial> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('APP PONTO FÁCIL!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('APP CHECK PONTO!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Text(_nomeColaborador.toUpperCase(), style: TextStyle(fontSize: 16, color: Colors.deepPurpleAccent)),
             ],
           ),

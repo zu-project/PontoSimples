@@ -52,6 +52,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
 
 
@@ -68,11 +69,19 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # The following line ensures that the Material Icons font is
+flutter_launcher_icons:
+  android: true
+  ios: false # Se não precisar para iOS
+  image_path: "assets/ic_launcher.png"
+  adaptive_icon_background: "#87CEEB" # Azul claro como fundo
+  adaptive_icon_foreground: "assets/ic_launcher.png"
+
+  # included with your application, so that you can use the icons in
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:

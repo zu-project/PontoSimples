@@ -7,7 +7,6 @@ class DatabaseService {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-
     _database = await _initDatabase();
     return _database!;
   }
@@ -33,26 +32,24 @@ class DatabaseService {
     ''');
   }
 
-  Future<int> inserirPonto(Ponto ponto) async {
+  Future<void> inserirPonto(Ponto ponto) async {
     final db = await database;
-    return await db.insert('pontos', ponto.toMap());
+    await db.insert('pontos', ponto.toMap());
   }
 
   Future<List<Ponto>> listarPontosPorData(DateTime data) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final inicio = DateTime(data.year, data.month, data.day);
+    final fim = inicio.add(Duration(days: 1));
+    final result = await db.query(
       'pontos',
-      where: 'dataHora LIKE ?',
-      whereArgs: ['${data.year}-${data.month.toString().padLeft(2, '0')}-${data.day.toString().padLeft(2, '0')}%'],
-      orderBy: 'dataHora', // Adicionar ordenação por dataHora
+      where: 'dataHora >= ? AND dataHora < ?',
+      whereArgs: [inicio.toIso8601String(), fim.toIso8601String()],
+      orderBy: 'dataHora ASC',
     );
-
-    return List.generate(maps.length, (i) {
-      return Ponto.fromMap(maps[i]);
-    });
+    return result.map((json) => Ponto.fromMap(json)).toList();
   }
 
-  // Novo método para atualizar um ponto
   Future<void> atualizarPonto(Ponto ponto) async {
     final db = await database;
     await db.update(
@@ -62,6 +59,18 @@ class DatabaseService {
       whereArgs: [ponto.id],
     );
   }
+
+  Future<List<Ponto>> listarPontosPorPeriodo(DateTime inicio, DateTime fim) async {
+    final db = await database;
+    final result = await db.query(
+      'pontos',
+      where: 'dataHora >= ? AND dataHora <= ?',
+      whereArgs: [inicio.toIso8601String(), fim.toIso8601String()],
+      orderBy: 'dataHora ASC',
+    );
+    return result.map((json) => Ponto.fromMap(json)).toList();
+  }
+
   Future<void> deletarPonto(int id) async {
     final db = await database;
     await db.delete(

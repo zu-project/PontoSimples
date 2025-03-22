@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.zuproject.pontofacil"
+    namespace = "com.zuproject.checkponto"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.zuproject.pontofacil" // Deve ser único na Play Store
+        applicationId = "com.zuproject.checkponto" // Deve ser único na Play Store
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode  // Usa o versionCode do pubspec.yaml
